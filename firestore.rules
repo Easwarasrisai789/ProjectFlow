@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ══════════════════════════════════════════
+    //  HELPER FUNCTIONS
+    // ══════════════════════════════════════════
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function currentUid() {
+      return request.auth.uid;
+    }
+
+    function getUser() {
+      return get(/databases/$(database)/documents/users/$(currentUid())).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUser().role == 'admin';
+    }
+
+    function isMemberOf(projectId) {
+      return isSignedIn() &&
+        currentUid() in get(/databases/$(database)/documents/projects/$(projectId)).data.memberIds;
+    }
+
+    function isValidRole(role) {
+      return role in ['admin', 'member'];
+    }
+
+
+    // ══════════════════════════════════════════
+    //  USERS COLLECTION
+    // ══════════════════════════════════════════
+    match /users/{uid} {
+
+      // Any signed-in user can read user profiles (needed for member search)
+      allow read: if isSignedIn();
+
+      // Self-registration
+      allow create: if isSignedIn()
+        && currentUid() == uid
+        && request.resource.data.keys().hasAll(['uid', 'name', 'email', 'role', 'createdAt'])
+        && isValidRole(request.resource.data.role);
+
+      // Users can update their own profile (except role); admins can update anything
+      allow update: if isSignedIn() && (
+        (currentUid() == uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+        || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+
+    // ══════════════════════════════════════════
+    //  PROJECTS COLLECTION
+    // ══════════════════════════════════════════
+    match /projects/{projectId} {
+
+      // Any member of the project OR admin can read
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        currentUid() in resource.data.memberIds
+      );
+
+      // Only admins can create projects
+      allow create: if isAdmin()
+        && request.resource.data.ownerId == currentUid()
+        && currentUid() in request.resource.data.memberIds
+        && request.resource.data.keys().hasAll([
+            'name', 'description', 'ownerId', 'ownerName',
+            'memberIds', 'members', 'status', 'createdAt'
+           ])
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100;
+
+      // Admin can update anything.
+      // Project owner can update project details and manage members.
+      allow update: if isSignedIn() && (
+        isAdmin()
+        ||
+        (resource.data.ownerId == currentUid() &&
+         currentUid() in resource.data.memberIds)
+      );
+
+      allow delete: if isSignedIn() && (
+        isAdmin() || resource.data.ownerId == currentUid()
+      );
+    }
+
+
+    // ══════════════════════════════════════════
+    //  TASKS COLLECTION
+    // ══════════════════════════════════════════
+    match /tasks/{taskId} {
+
+      // Any project member or admin can read tasks
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        currentUid() in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberIds
+      );
+
+      // Admins can create tasks
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll([
+            'projectId', 'title', 'status', 'priority',
+            'createdBy', 'createdAt'
+           ])
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.status in ['todo', 'in_progress', 'in_review', 'done']
+        && request.resource.data.priority in ['low', 'medium', 'high', 'critical']
+        && request.resource.data.createdBy == currentUid();
+
+      // Admin → update anything
+      // Assigned member → can advance status (todo→in_progress→in_review→done) and updatedAt/completedAt
+      allow update: if isSignedIn() && (
+        isAdmin()
+        ||
+        (
+          resource.data.assigneeId == currentUid() &&
+          isMemberOf(resource.data.projectId) &&
+          request.resource.data.projectId == resource.data.projectId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt', 'completedAt'])
+        )
+      );
+
+      // Only admins can delete tasks
+      allow delete: if isAdmin();
+    }
+
+
+    // ══════════════════════════════════════════
+    //  CHATS COLLECTION  (group chat per project)
+    // ══════════════════════════════════════════
+    match /chats/{messageId} {
+
+      // Any project member or admin can read messages for their project
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        currentUid() in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberIds
+      );
+
+      // Any project member or admin can send messages
+      allow create: if isSignedIn()
+        && isMemberOf(request.resource.data.projectId)
+        && request.resource.data.senderId == currentUid()
+        && request.resource.data.keys().hasAll(['projectId', 'senderId', 'senderName', 'text', 'createdAt'])
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+
+      // No edits or deletes on chat messages
+      allow update, delete: if false;
+    }
+
+
+    // ══════════════════════════════════════════
+    //  DENY ALL OTHER COLLECTIONS
+    // ══════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

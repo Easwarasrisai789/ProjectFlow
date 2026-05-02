@@ -33,7 +33,6 @@ const Dashboard = () => {
     myPending:  myTasks.filter((t) => t.status !== 'done').length,
   }), [tasks, myTasks]);
 
-  // For members: show only their tasks sorted by due date
   const relevantTasks = useMemo(() => {
     if (isAdmin) {
       return [...tasks]
@@ -55,9 +54,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  const MEMBER_NEXT = { todo: 'in_progress', in_progress: 'done', done: null };
-  const MEMBER_BTN = { todo: '▶ Start', in_progress: '✓ Done', done: null };
 
   return (
     <div>
@@ -193,7 +189,6 @@ const Dashboard = () => {
                         <span style={{ fontSize: 11, color: 'var(--text3)' }}>{pTasks.length} tasks</span>
                       </div>
                     </div>
-                    {/* Member previews */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       {(proj.members || []).slice(0, 5).map((m, i) => (
                         <div key={m.uid} style={{ marginLeft: i > 0 ? -6 : 0 }}>

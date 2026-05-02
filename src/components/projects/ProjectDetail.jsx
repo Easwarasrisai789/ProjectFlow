@@ -382,6 +382,7 @@ const ProjectDetail = () => {
   const [view, setView] = useState('kanban');
 
   const loadProject = async () => { setProjLoading(true); const p = await getProject(projectId); setProject(p); setProjLoading(false); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadProject(); }, [projectId]);
 
   const isAdmin = profile?.role === 'admin';
@@ -397,7 +398,6 @@ const ProjectDetail = () => {
   }, [tasks]);
 
   const nextTaskNumber = tasks.length + 1;
-
   const tasksByStatus = Object.keys(STATUS_CONFIG).reduce((acc, s) => { acc[s] = tasks.filter((t) => t.status === s); return acc; }, {});
 
   const handleStatusChange = async (taskId, status) => { await updateTaskStatus(taskId, status); toast.success('Status updated'); refetchTasks(); };

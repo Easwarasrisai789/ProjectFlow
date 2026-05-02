@@ -26,6 +26,10 @@ export const useAllTasks = (projectIds) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const projectIdsKey = JSON.stringify(projectIds);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetch = useCallback(async () => {
     if (!projectIds?.length) { setTasks([]); setLoading(false); return; }
     setLoading(true);
@@ -35,7 +39,7 @@ export const useAllTasks = (projectIds) => {
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(projectIds)]);
+  }, [projectIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetch(); }, [fetch]);
 

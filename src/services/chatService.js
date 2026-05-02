@@ -1,6 +1,6 @@
 // src/services/chatService.js
 import {
-  collection, doc, addDoc, query, where, orderBy,
+  collection, addDoc, query, where, orderBy,
   onSnapshot, serverTimestamp, limit,
 } from 'firebase/firestore';
 import { db } from './firebase';

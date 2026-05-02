@@ -5,7 +5,6 @@ import { useProjects } from '../../hooks/useProjects';
 import { useAllTasks } from '../../hooks/useTasks';
 import { getAllUsers } from '../../services/projectService';
 import { Avatar, Badge, Spinner, PageHeader, EmptyState } from '../shared/UI';
-import { STATUS_CONFIG, formatDate } from '../../utils/helpers';
 
 const TeamPage = () => {
   const { profile } = useAuth();
@@ -22,7 +21,6 @@ const TeamPage = () => {
     getAllUsers().then(u => { setAllUsers(u); setUsersLoading(false); });
   }, []);
 
-  // Users visible to current user: admins see all, members see only project members
   const visibleUsers = useMemo(() => {
     if (isAdmin) return allUsers;
     const myProjectMemberIds = new Set(
@@ -72,7 +70,6 @@ const TeamPage = () => {
         </div>
       )}
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface2)', borderRadius: 8, padding: 4 }}>
           {[['all', 'All'], ['admin', 'Admins'], ['member', 'Members']].map(([v, l]) => (
@@ -110,7 +107,6 @@ const TeamPage = () => {
                   />
                 </div>
 
-                {/* Task stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
                   {[
                     { label: 'To Do', value: stats.todo, color: '#9998b0' },
@@ -126,7 +122,6 @@ const TeamPage = () => {
                   ))}
                 </div>
 
-                {/* Projects */}
                 {userProjects.length > 0 && (
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
